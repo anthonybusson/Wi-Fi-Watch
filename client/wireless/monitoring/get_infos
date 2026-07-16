@@ -1,0 +1,116 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+
+while getopts "hi:I:" option; do
+    case "${option}" in
+        I)
+            IF="${OPTARG}"
+            ;;
+        b)
+            B="${OPTARG}"
+            ;;
+        i)
+            INTERVAL="${OPTARG}"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./get_infos [OPTIONS]
+
+Options:
+    -h
+        Display this help message and exit.
+
+    -i <refresh interval>
+        Specify the output refresh interval.
+
+    -I <wireless interface>
+        Specify the wireless interface.
+
+    -b <bssid>
+        Specify the BBSID.
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+on_stop() {
+    echo "{\"service\": \"WirelessInfo\", \"status\" : \"0\", \"output\" : \"Sortie du processus correct\"}"
+    exit 0
+}
+
+first() {
+    ping -c 1 -I $IF 8.8.8.8 > "$DIR/log/ping"
+
+    LAT=$(cat "$DIR/log/ping"| grep "time=" | cut -d "=" -f 4 | cut -d ' ' -f1) #on ping une fois pour mettre à jour le mcs et aussi obtenir la latence
+    iw dev $IF link > "$DIR/log/link" #stockage dans un fichier pour rendre le découpage plus facile
+
+    DTMR=$(cat "$DIR/log/link" | grep -i "rx bitrate" | cut -d' ' -f3) #Débit théorique maximal en réception 
+    DTME=$(cat "$DIR/log/link" | grep -i "tx bitrate" | cut -d' ' -f3) #________________________en émission 
+    MCSR=$(cat "$DIR/log/link" | grep -i "rx bitrate" | cut -d' ' -f5,6) #Modulation en émission 
+    MCSE=$(cat "$DIR/log/link" | grep -i "rx bitrate" | cut -d' ' -f5,6) #_____________ réception 
+    RSSI=$(cat "$DIR/log/link" | grep -i "signal" | cut -d' ' -f2)
+
+    scan1=$(iw $IF survey dump)
+
+    active1=$(echo "$scan1" | grep -B 1 -A 5 "in use" | grep "active time" | xargs | awk -F ' ' '{print $4}')
+    busy1=$(echo "$scan1" | grep -B 1 -A 5 "in use" | grep "busy time" | xargs | awk -F ' ' '{print $4}')
+    reception1=$(echo "$scan1" | grep -B 1 -A 5 "in use" | grep "receive time" | xargs | awk -F ' ' '{print $4}')
+    transmission1=$(echo "$scan1" | grep -B 1 -A 5 "in use" | grep "transmit time" | xargs | awk -F ' ' '{print $4}')
+
+    sleep $INTERVAL
+}
+
+trap on_stop SIGTERM
+
+first
+
+while true; do
+
+    scan2=$(iw $IF survey dump)
+
+    active2=$(echo "$scan2" | grep -B 1 -A 5 "in use" | grep "active time" | xargs | awk -F ' ' '{print $4}')
+    busy2=$(echo "$scan2" | grep -B 1 -A 5 "in use" | grep "busy time" | xargs | awk -F ' ' '{print $4}')
+    reception2=$(echo "$scan2" | grep -B 1 -A 5 "in use" | grep "receive time" | xargs | awk -F ' ' '{print $4}')
+    transmission2=$(echo "$scan2" | grep -B 1 -A 5 "in use" | grep "transmit time" | xargs | awk -F ' ' '{print $4}')
+
+    diff_active=$((active2 - active1))
+    diff_busy=$((busy2 - busy1))
+    diff_transmission=$((transmission2 - transmission1))
+    diff_reception=$((reception2 - reception1))
+    occupe=$((diff_busy + diff_transmission))
+
+    #BT=0.0
+    BT=$(awk -v occ="$occupe" -v act="$diff_active" 'BEGIN {printf "%.2f", (occ / act) * 100}')
+    #IT=100.0
+    IT=$(awk -v bt="$BT" 'BEGIN {printf "%.2f", 100 - bt}')
+
+    EBD=$(awk -v dtmr="$DTMR" -v it="$IT" 'BEGIN {printf "%.2f", dtmr * it / 100}')
+    EBU=$(awk -v dtme="$DTME" -v it="$IT" 'BEGIN {printf "%.2f", dtme * it / 100}')
+
+    echo "{\"service\": \"WirelessInfo\", \"bssid\" : \"$B\",  \"LAT\": \"$LAT\", \"DTMR\": \"$DTMR\", \"DTME\": \"$DTME\", \"MCSR\": \"$MCSR\", \"MCSE\": \"$MCSE\", \"RSSI\": \"$RSSI\", \"BT\": \"$BT\", \"IT\": \"$IT\", \"EBD\" : \"$EBD\" , \"EBU\" : \"$EBU\"}"
+
+    ping -c 1 -I $IF 8.8.8.8 > "$DIR/log/ping"
+
+    LAT=$(cat "$DIR/log/ping"| grep "time=" | cut -d "=" -f 4 | cut -d ' ' -f1) #on ping une fois pour mettre à jour le mcs et aussi obtenir la latence
+    iw dev $IF link > "$DIR/log/link" #stockage dans un fichier pour rendre le découpage plus facile
+
+    DTMR=$(cat "$DIR/log/link" | grep -i "rx bitrate" | cut -d' ' -f3) #Débit théorique maximal en réception 
+    DTME=$(cat "$DIR/log/link" | grep -i "tx bitrate" | cut -d' ' -f3) #________________________en émission 
+    MCSR=$(cat "$DIR/log/link" | grep -i "rx bitrate" | cut -d' ' -f5,6) #Modulation en émission 
+    MCSE=$(cat "$DIR/log/link" | grep -i "rx bitrate" | cut -d' ' -f5,6) #_____________ réception 
+    RSSI=$(cat "$DIR/log/link" | grep -i "signal" | cut -d' ' -f2)
+
+    scan1=$(iw $IF survey dump)
+
+    active1=$(echo "$scan1" | grep -B 1 -A 5 "in use" | grep "active time" | xargs | awk -F ' ' '{print $4}')
+    busy1=$(echo "$scan1" | grep -B 1 -A 5 "in use" | grep "busy time" | xargs | awk -F ' ' '{print $4}')
+    reception1=$(echo "$scan1" | grep -B 1 -A 5 "in use" | grep "receive time" | xargs | awk -F ' ' '{print $4}')
+    transmission1=$(echo "$scan1" | grep -B 1 -A 5 "in use" | grep "transmit time" | xargs | awk -F ' ' '{print $4}')
+
+
+    sleep $INTERVAL
+done

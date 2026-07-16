@@ -1,0 +1,82 @@
+---
+- name: Initialisation de la sonde
+  hosts: all
+  become: yes
+  vars:
+    monitoring_user: "monitoring"
+    src: "../../client/"
+    dest: "/opt/client/"
+    script: "install.sh"
+    ansible_ssh_public_key_file: "ansible-client/keys/id_rsa_ansible.pub"
+
+  tasks:
+    - name: Créer l'utilisateur {{ monitoring_user }}
+      ansible.builtin.user:
+        name: "{{ monitoring_user }}"
+        shell: /bin/bash
+        state: present
+        create_home: yes
+
+    - name: Déployer la clé publique
+      ansible.posix.authorized_key:
+        user: "{{ monitoring_user }}"
+        state: present
+        key: "{{ lookup('file', ansible_ssh_public_key_file) }}"
+
+    - name: Copier le dossier d'application vers la sonde
+      ansible.builtin.copy:
+        src: "{{ src }}"
+        dest: "{{ dest }}"
+        owner: "{{ monitoring_user }}"
+        group: "{{ monitoring_user }}"
+        mode: '0755'
+
+    - name: Déployer le script hook DHCP
+      ansible.builtin.copy:
+        src: install/wifi-route
+        dest: /etc/dhcp/dhclient-exit-hooks.d/wifi-route
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Configurer les droits sudo pour le script précis
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ monitoring_user }}"
+        content: "{{ monitoring_user }} ALL=(ALL) NOPASSWD: ALL"
+        owner: root
+        group: root
+        mode: '0440'
+        validate: 'visudo -cf %s'
+
+    - name: Installer les paquets nécessaires
+      ansible.builtin.apt:
+        name:
+          - iperf3
+          - wireless-tools
+          - bind9-dnsutils
+          - curl
+          - wpasupplicant
+          - isc-dhcp-client
+        state: present
+        update_cache: no
+
+    - name: Lancer le script bash sur la sonde
+      ansible.builtin.command:
+        cmd: "{{ dest }}{{ script }}"
+      become: yes
+
+    - name: Configuration réseau de la sonde
+      become: true 
+      block:
+      - name: Tuer le processus wpa_supplicant
+        ansible.builtin.shell: pkill wpa_supplicant || true
+        register: pkill_result
+        changed_when: "pkill_result.rc == 0"
+        failed_when: false
+
+      - name: Désactiver complètement NetworkManager
+        ansible.builtin.systemd:
+          name: NetworkManager
+          state: stopped
+          enabled: no     
+          masked: yes

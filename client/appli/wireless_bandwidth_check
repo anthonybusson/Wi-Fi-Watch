@@ -1,0 +1,79 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+
+TARGET="8.8.8.8"
+
+while getopts "t:m:hi:" option; do
+    case "${option}" in
+        i)
+            IF="${OPTARG}"
+            ;;
+        m)
+            M="${OPTARG}"
+            ;;
+        t)
+            TARGET="${OPTARG}"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./wireless_bandwidth_check [OPTIONS]
+
+Options:
+    -h
+        Show this help message and exit.
+
+    -i <Wireless Interface>
+        Specify the wireless interface to use for the bandwidth test.
+
+    -t <Bandwidth Test Type>
+        Specify the type of bandwidth test (iperf3 or speedtest).
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+if [[ $M == "iperf3" ]]; then
+  iperf3 -c $TARGET --bind-dev $IF --json -u -b 0 -R -t 10 > $DIR/iperf.json
+
+  read -r DL UL JIT PL <<< "$(
+    jq -r '
+      [
+       (.end.sum_received.bits_per_second / 10000 | round) / 100,
+       (.end.sum_sent.bits_per_second / 10000 | round) / 100,
+       (.end.sum.jitter_ms * 100 | round) / 100,
+       (.end.sum.lost_percent * 100 | round) / 100
+      ] | @tsv
+    ' $DIR/iperf.json
+  )"
+
+  STATUS=$?
+
+  echo "{\"service\" : \"BW_IPERF\" , \"status\" : $STATUS ,
+             \"DL\" : \"$DL\", \"UL\" : \"$UL\",
+             \"JIT\" : \"$JIT\", \"PL\" : \"$PL\" }"
+
+else
+  speedtest -I "$IF" --accept-license --accept-gdpr -f json-pretty > $DIR/speedtest.json
+
+  #Renvoi d'un json propre à afficher sur l'interface
+
+  read -r DL UL DLMIQ ULMIQ <<< "$(
+    jq -r '
+      [.download.bandwidth * 8 / 1e6,
+       .upload.bandwidth * 8 / 1e6,
+       .download.latency.iqm,
+       .upload.latency.iqm] | @tsv
+    ' $DIR/speedtest.json
+  )"
+
+  STATUS=$?
+
+  echo "{\"service\" : \"BW_SPDT\" , \"status\" : $STATUS ,
+             \"DL\" : \"$DL\", \"UL\" : \"$UL\", 
+             \"DLMIQ\" : \"$DLMIQ\" , \"ULMIQ\" : \"$ULMIQ\" }"
+fi
+
+

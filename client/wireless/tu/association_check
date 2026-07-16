@@ -1,0 +1,72 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+WPA_CONF="$DIR/../configuration/files/wpa.conf"
+LOG_ASAU="$DIR/log/tmp_log"
+
+while getopts "c:hi:" option; do
+    case "${option}" in
+        i)
+            IF="${OPTARG}"
+            ;;
+        c)
+            WPA_CONF="${OPTARG}"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./association_check [OPTIONS]
+
+Options:
+    -h
+        Affiche ce message d'aide et quitte.
+
+    -c <Fichier de configuration>
+        Permet de spécifier le fichier de configuration pour wpa_supplicant. 
+
+    -i <Interface sans fil>
+        Permet de spécifier l'interface sans fil.
+
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+# on récupère le bssid actuel depuis le fichier de configuration
+CB=$(cat "$WPA_CONF" | grep "bssid" | awk -F '=' '{print $2}') 
+
+# on lance la commande d'assoc/auth et on garde la sortie de la commande afin de calculer le temps d'assoc/auth
+# on garde aussi le pid pour tuer le proc à la fin des tests
+# on laisse le temps à l'assoc/auth de se faire
+wpa_supplicant -t -i $IF -c $WPA_CONF > $LOG_ASAU 2>&1 &
+
+timeout 50s tail -n +1 -f "$LOG_ASAU" 2>/dev/null | grep -q -m 1 "CTRL-EVENT-CONNECTED"
+
+# on récupère le timestamp en débit de fichier ainsi que celui de confirmation d'auth
+# on calcule et on stocke le résultat pour chaque bssid
+if [ $? -eq 0 ]; then
+    startAA=$(head -n 1 "$LOG_ASAU" | awk -F ':' '{print $1}')
+    endAA=$(grep -m 1 "CTRL-EVENT-CONNECTED" "$LOG_ASAU" | awk -F ':' '{print $1}')
+
+    if [ -z "$endAA" ]; then endAA=$startAA; fi
+
+    AT=$(echo "$endAA $startAA" | awk '{printf "%.3f", $1 - $2}')
+
+    if (( $(awk "BEGIN {print ($AT < 4)}") )); then
+        STATUS=0
+    elif (( $(awk "BEGIN {print ($AT < 8 && $AT > 4)}") )); then
+        STATUS=1
+    elif (( $(awk "BEGIN {print ($AT < 15 && $AT > 8 )}") )); then
+        STATUS=2
+    elif (( $(awk "BEGIN {print ($AT > 15 )}") )); then
+        STATUS=3
+    fi
+else
+    STATUS=4
+fi
+
+
+STATUS=$?
+
+echo "{\"service\" : \"BSSID_ASAU\" , \"status\" : $STATUS , \"bssid\" : \"$CB\" , \"duration\": $AT}"

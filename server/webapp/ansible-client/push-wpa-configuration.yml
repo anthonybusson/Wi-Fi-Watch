@@ -1,0 +1,18 @@
+
+- name: Deploy wpa_supplicant configuration 
+  hosts: all
+  gather_facts: no
+  become: yes
+  
+  vars:
+    local_dest_path: "{{ configuration_file_path }}"
+    remote_dest_path: "/opt/client/wireless/configuration/files/creds.csv"
+
+  tasks:
+    - name: Deploy the wpa_supplicant configuration 
+      copy:
+        src: "{{ local_dest_path }}"
+        dest: "{{ remote_dest_path }}"
+        owner: monitoring
+        group: monitoring
+        mode: '0600'  

@@ -1,0 +1,21 @@
+- name: Try to request an IP configuration and to display it
+  hosts: all
+  gather_facts: no
+  become: yes
+  
+  tasks:
+    - name: DHCP script execution
+      command: /opt/client/wireless/tu/ip_config_request -i {{ interface }}
+      register: dhcp_output
+      changed_when: false
+
+    - name: IP script execution
+      command: /opt/client/appli/ip_check_config -i {{ interface }}
+      register: ip_ckeck_output
+      changed_when: false
+
+    - name: Return script output
+      debug:
+        msg:
+          dhcp_result: "{{ dhcp_output.stdout }}"
+          check_result: "{{ ip_ckeck_output.stdout }}"

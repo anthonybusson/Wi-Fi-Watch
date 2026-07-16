@@ -1,0 +1,12 @@
+#!/bin/bash
+
+IF_LIST=$(iw dev | grep "Interface" | awk '{print $2}')
+
+if [ -z "$IF_LIST" ]; then
+  echo '{"interfaces": []}'
+  exit 0
+fi
+
+RES=$(printf '%s\n' $IF_LIST | jq -R . | jq -s .)
+
+echo "{ \"interfaces\": $RES }"

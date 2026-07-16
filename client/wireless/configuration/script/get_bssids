@@ -1,0 +1,86 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+J=""
+
+
+while getopts "i:s:t:hjn" option; do
+    case "${option}" in
+        i)
+            IF="${OPTARG}"
+            ;;
+        s)
+            SSID="${OPTARG}"
+            ;;
+        t)
+            SEUIL="${OPTARG}"
+            ;;
+        j)
+            J="-j"
+            ;;
+        n)
+            N="-n"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./get_bssids [OPTIONS]
+
+Options:
+  -h
+      Affiche ce message d'aide et quitte.
+
+  -t <Seuil minimal>
+      Permet de spécifier le seuil minimal du signal souhaité.
+        
+  -s <SSID>
+      Permet de spécifier le SSID souhaité.
+
+  -j 
+      Permet de renvoyer le résultat de la commande au format json.
+
+  -n 
+      Permet de renvoyer le nombre de résultat de la commande.
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+if [[ $(cat /sys/class/net/$IF/operstate) != "up" ]]; then
+  ip link set "$IF" up
+fi
+
+# Permet de lister les BSSID qui ont un signal supérieur à $SEUIL
+
+iw dev $IF scan | awk -v s="$SEUIL" -v wanted="$SSID" '
+/^BSS / {
+  bssid=$2
+  sub(/\(.*/, "", bssid)
+}
+/signal:/ { signal=$2 }
+/SSID:/ {
+  if (tolower($2) ~ tolower(wanted) && signal >= s)
+    print $2 "," bssid "," signal
+}
+' > "$DIR/../files/filtre_bssid_list.csv"
+
+if [[ $J == "-j" ]];then
+  SCAN_RESULTAT=$(cat "$DIR/../files/filtre_bssid_list.csv")
+   
+  echo "$SCAN_RESULTAT" | jq -R -s '
+    split("\n") | map(select(length > 0)) | map(
+      split(",") | {
+        "ssid": .[0], 
+        "bssid": .[1], 
+        "signal": (.[2] | tonumber)
+      }
+    )
+  '
+fi
+
+if [[ $N == "-n" ]];then
+  NB_BSSID=$(wc -l < "$DIR/../files/filtre_bssid_list.csv")
+  echo $NB_BSSID
+fi

@@ -1,0 +1,78 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+
+while getopts "n:b:s:h" option; do
+    case "${option}" in
+        n)
+            NB_BSSID="${OPTARG}"
+            BSSID=$(sed -n "$NB_BSSID"p "$DIR/../files/filtre_bssid_list.csv" | cut -d, -f2)
+            ;;
+        b)
+            BSSID="${OPTARG}"
+            ;;
+        s)
+			SSID="${OPTARG}"
+			;;
+        h)
+            cat <<- EOF
+Usage: ./create_conf [OPTIONS]
+
+Options:
+  -h
+        Affiche ce message d'aide et quitte.
+
+  -b <BSSID>
+        Permet de spécifier le BSSID pour lequel il faut créer la configuration.
+        
+   -s <SSID>
+        Permet de spécifier le SSID pour lequel il faut créer la configuration.
+
+  -n <Numéro>
+        Permet de spécifier le BSSID souhaité dans la liste.
+        
+
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+TYPE=$(cat "$DIR/../files/creds.csv" | grep "$SSID" | cut -d',' -f2)
+
+echo "t: " $TYPE "bss: " $BSSID "s: " $SSID
+
+if [[ "$TYPE" == "WPA-PSK" ]];then
+	echo "PSK"
+    PSK=$(cat "$DIR/../files/creds.csv" | grep "$SSID" | cut -d',' -f3)
+	
+	TEMPLATE="$DIR/../files/wpa_psk.tpl"
+	CONF="$DIR/../files/wpa.conf"
+	
+	cp "$TEMPLATE" "$CONF"
+	
+	sed -i "s|__BSSID__|$BSSID|g" "$CONF"
+    sed -i "s|__PSK__|$PSK|g" "$CONF"
+	
+fi
+
+if [[ "$TYPE" == "WPA-EAP" ]];then
+    echo "EAP"
+	ID=$(cat "$DIR/../files/creds.csv" | grep "$SSID" | cut -d',' -f3)
+	PWD=$(cat "$DIR/../files/creds.csv" | grep "$SSID" | cut -d',' -f4)
+	
+	TEMPLATE="$DIR/../files/wpa_eap.tpl"
+	CONF="$DIR/../files/wpa.conf"
+	
+	cp "$TEMPLATE" "$CONF"
+	
+	
+	sed -i "s|__BSSID__|$BSSID|g" "$CONF"
+    sed -i "s|__IDENTITY__|$ID|g" "$CONF"
+    sed -i "s|__PASSWORD__|$PWD|g" "$CONF"
+fi
+
+
+
+

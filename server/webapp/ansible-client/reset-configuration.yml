@@ -1,0 +1,16 @@
+
+- name: Reset configurations
+  hosts: all
+  gather_facts: no
+  become: yes
+  
+
+  tasks:
+    - name: Script execution
+      command: /opt/client/wireless/reset/reset_config -i {{ interface }}
+      register: script_output
+      changed_when: false
+
+    - name: Return script output
+      debug:
+        msg: "{{ script_output.stdout }}"

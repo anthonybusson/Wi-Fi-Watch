@@ -1,0 +1,16 @@
+- name: Deploy Configuration via Template
+  hosts: all
+  gather_facts: no
+  become: yes
+  
+  vars:
+    remote_dest_path: "/opt/client/config.cfg"
+
+  tasks:
+    - name: Generate and deply the autorun configuration
+      template:
+        src: templates/autorun.j2
+        dest: "{{ remote_dest_path }}"
+        owner: monitoring
+        group: monitoring
+        mode: '0644'

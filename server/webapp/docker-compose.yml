@@ -1,0 +1,11 @@
+version: '1.0'
+services:
+  wifi-monitoring:
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - /dev/log:/dev/log
+    container_name: WirelessMonitoring
+    

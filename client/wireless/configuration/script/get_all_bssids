@@ -1,0 +1,75 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+
+J=""
+
+while getopts "i:t:hjn" option; do
+    case "${option}" in
+        i)
+            IF="${OPTARG}"
+            ;;
+        t)
+            SEUIL="${OPTARG}"
+            ;;
+        j)
+            J="-j"
+            ;;
+        n)
+            N="-n"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./get_all_bssids [OPTIONS]
+
+Options:
+  -h
+        Affiche ce message d'aide et quitte.
+
+  -t <Seuil minimal>
+        Permet de spécifier le seuil minimal du signal souhaité.
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+if [[ $(cat /sys/class/net/$IF/operstate) != "up" ]]; then
+  ip link set "$IF" up
+fi
+
+iw dev $IF scan | awk -v s="$SEUIL" '
+/^BSS /{
+    if(bssid&&signal>=s) print ssid","bssid","signal
+    bssid=substr($2,1,17); ssid="Masqué"; signal=-100; l=0
+}
+/signal:/ { signal=int($2) }
+/SSID:/ && !/BSSID/ {
+    if(!l) {
+        sub(/.*: /,"")
+        ssid=$0; l=1
+    }
+}
+END{ if(bssid&&signal>=s) print ssid","bssid","signal }
+' > "$DIR/../files/bssid_list.csv"
+
+if [[ $J == "-j" ]];then
+  SCAN_RESULTAT=$(cat "$DIR/../files/bssid_list.csv")
+
+  echo "$SCAN_RESULTAT" | jq -R -s '
+    split("\n") | map(select(length > 0)) | map(
+      split(",") | {
+        "ssid": .[0], 
+        "bssid": .[1], 
+        "signal": (.[2] | tonumber)
+      }
+    )
+  '
+fi
+
+if [[ $N == "-n" ]];then
+  NB_BSSID=$(wc -l < "$DIR/../files/bssid_list.csv")
+  echo $NB_BSSID
+fi

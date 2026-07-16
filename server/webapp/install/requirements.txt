@@ -1,0 +1,5 @@
+Flask
+PyYAML
+ansible-runner
+ansible-core
+gunicorn

@@ -1,0 +1,58 @@
+#!/bin/bash
+
+V=""
+
+DNS_TARGET="univ-lyon1.fr"
+
+IF=""
+
+while getopts "vhd:i:b:" option; do
+    case "${option}" in
+        i)
+            IF="${OPTARG}"
+            ;;
+        b)
+            B="${OPTARG}"
+            ;;
+        d)
+            DNS_TARGET="${OPTARG}"
+            ;;
+        v)
+            V="-v"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./dns_check [OPTIONS]
+
+Options:
+    -h
+        Display this help message and exit.
+
+    -v
+        Verbose mode. Enable more detailed output.
+
+    -d <Domain Name>
+        Specify the domain name to resolve.
+
+    -i <IP Address>
+        Specify the interface via IP address to use for resolution.
+
+    -b <BSSID>
+        Specify the BSSID.
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+startDNS=$(date +"%s.%3N")
+
+dig +trace $DNS_TARGET -i $IF >> /dev/null
+
+STATUS=$?
+
+endDNS=$(date +"%s.%3N")
+
+DNST=$(echo "$endDNS $startDNS" | awk '{printf "%.3f", $1 - $2}')
+
+echo "{\"service\" : \"DNS\" , \"status\" : $STATUS ,  \"bssid\" : \"$B\" , \"duration\" : $DNST}"

@@ -1,0 +1,61 @@
+#!/bin/bash
+
+#IF=$(nmcli dev | awk '$2 == "wifi"' | xargs | awk -F ' ' '{print $1}')
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+
+V=""
+
+HTTP_TARGET="https://www.univ-lyon1.fr"
+
+while getopts "i:vhu:b:" option; do
+    case "${option}" in
+        i)
+            IF="${OPTARG}"
+            ;;
+        b)
+            B="${OPTARG}"
+            ;;
+        u)
+            HTTP_TARGET="${OPTARG}"
+            ;;
+        v)
+            V="-v"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./http_check [OPTIONS]
+
+Options:
+    -h
+        Display this help message and exit.
+
+    -v
+        Verbose mode. Allows displaying more details.
+
+    -u <URL>
+        Allows specifying the URL to resolve.
+
+    -i <Wireless interface>
+        Allows specifying the wireless interface.
+
+    -b <BSSID>
+        Specify the BSSID.
+
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+startHTTP=$(date +"%s.%3N")
+
+
+timeout 20s curl --interface $IF -H "Cache-Control: no-cache" -H "Pragma: no-cache" -L $HTTP_TARGET >> /dev/null
+
+endHTTP=$(date +"%s.%3N")
+
+HTTPT=$(echo "$endHTTP $startHTTP" | awk '{printf "%.3f", $1 - $2}')
+
+STATUS=$?
+
+echo "{\"service\" : \"HTTP\" , \"status\" : $STATUS ,  \"bssid\" : \"$B\" , \"duration\" : $HTTPT}"

@@ -1,0 +1,37 @@
+#!/bin/bash
+
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+
+while getopts "hi:" option; do
+    case "${option}" in
+        i)
+            IF="${OPTARG}"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./ip_config_request [OPTIONS]
+
+Options:
+  -h
+        Affiche ce message d'aide et quitte.
+
+  -i <Interface sans fil>
+        Permet de spécifier l'interface sans fil.
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+
+startDHCP=$(date +"%s.%3N")
+
+dhclient $IF > /dev/null
+
+STAT=$?
+
+endDHCP=$(date +"%s.%3N")
+
+DHCPT=$(echo "$endDHCP $startDHCP" | awk '{printf "%.3f", $1 - $2}')
+
+echo "{\"service\" : \"DHCP\" , \"status\" : $STAT , \"duration\" : $DHCPT}"

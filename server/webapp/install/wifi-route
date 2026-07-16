@@ -1,0 +1,21 @@
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+
+if [ "$interface" = "$IF" ]; then
+    if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ] || [ "$reason" = "REBIND" ] || [ "$reason" = "REBOOT" ]; then
+        if [ -n "$new_routers" ]; then
+            ip route add default via $new_routers dev $interface metric 200
+        fi
+    fi
+fi
+
+
+
+#if iw dev | awk '$1=="Interface"{print $2}' | grep -q "^$interface$"; then
+#
+#    if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ] || [ "$reason" = "REBIND" ]; then
+#        if [ -n "$new_routers" ]; then
+#            ip route add default via $new_routers dev $interface metric 200
+#        fi
+#    fi
+#
+#fi

@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Wireless Monitoring</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <script src="script/chart.js" defer></script>
+    <script src="script/script.js" defer></script>
+    <script src="script/alpine.js" defer></script>
+  </head>
+
+  <body>
+    <h1>Wireless Monitoring</h1>
+
+    <div class="status-panel-container" id="statusPanel">
+      <div class="panel-header" onclick="toggleStatusPanel()">
+        <span class="panel-title">Wireless Status</span>
+        <span id="panel-arrow" class="panel-arrow">▼</span>
+      </div>
+
+      <div id="panel-content">
+        <div class="status-controls">
+          <button
+            onclick="updateStatus()"
+            data-tooltip="Retrieve the current status of the Wi-Fi connection"
+          >
+            Get state
+          </button>
+          <button
+            id="reset-btn"
+            class="reset-btn-inline"
+            data-tooltip="Click here to disconnect the probe and reset it to the initial state"
+          >
+            Reset config
+          </button>
+        </div>
+
+        <div
+          id="wireless-info-box"
+          class="wireless-info-box"
+          style="display: none"
+        >
+          <div class="info-row">
+            <span class="label">Status :</span>
+            <span id="ws_status" class="value">-</span>
+          </div>
+          <div class="info-row">
+            <span class="label">SSID :</span>
+            <span id="ws_ssid" class="value">-</span>
+          </div>
+          <div class="info-row">
+            <span class="label">BSSID :</span>
+            <span id="ws_bssid" class="value mono">-</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Signal :</span>
+            <span id="ws_signal" class="value">-</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Freq :</span>
+            <span id="ws_freq" class="value">-</span>
+          </div>
+          <div class="info-row">
+            <span class="label">IP :</span>
+            <span id="ip_add_status" class="value">-</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Gateway :</span>
+            <span id="ip_gw_status" class="value">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 20px">
+      <label for="probe_select"><strong>Probe selection : </strong></label>
+      <select id="probe_select">
+        <option value="" disabled selected>Loading probes...</option>
+      </select>
+
+      <label for="probe_interface" style="margin-left: 20px"
+        ><strong> Interface : </strong></label
+      >
+      <select id="probe_interface">
+        <option value="" disabled selected>Select a probe first</option>
+      </select>
+    </div>
+
+    <div class="tabs">
+      <div
+        class="tab active"
+        onclick="showTab('configuration_zone', this)"
+        data-tooltip="Upload credentials to connect to a specific network"
+      >
+        Credentials
+      </div>
+      <div
+        class="tab"
+        onclick="showTab('scan_zone', this)"
+        data-tooltip="Scan surrounding access points"
+      >
+        Visualization
+      </div>
+      <div
+        class="tab"
+        onclick="showTab('autorun_zone', this)"
+        data-tooltip="Run a sequence of automated network tests"
+      >
+        SysLog Parameters
+      </div>
+    </div>
+
+    <div id="configuration_zone" class="content active card">
+      <h2>Configuration file</h2>
+      <label for="cred_files"
+        >Select the configuration file for the association and authentication
+        :</label
+      >
+      <br /><br />
+      <input type="file" id="cred_files" name="cred_files" />
+      <br /><br />
+      <span id="cred_files_response"></span>
+      <br /><br />
+      <button onclick="configuration()">Deploy</button>
+    </div>
+
+    <div id="scan_zone" class="content card">
+      <span class="spinner"></span>
+
+      <h2>BSSID Scan</h2>
+
+      <div class="scan-controls">
+        <label
+          for="min_signal"
+          data-tooltip="Set the minimum signal strength (in dBm) to filter BSSIDs"
+          >Minimal Signal :</label
+        >
+        <input id="signal" type="number" value="-80" />
+        <button id="scan-btn" onclick="scan()">▶ Scan</button>
+      </div>
+
+      <div id="bssid-panel" class="bssid-panel" style="display: none">
+        <span class="spinner"></span>
+
+        <br />
+        <div class="bssid-value">
+          <strong>Selected BSSID :</strong>
+          <span id="selected-bssid">--</span>
+        </div>
+
+        <br />
+
+        <div class="bssid-actions">
+          <div id="bssid-status" class="card">
+            <h3>Association and authentication progress</h3>
+            <span class="spinner"></span>
+            <p>State association : <span id="bssid_asau_state">-</span></p>
+            <p>Duration : <span id="bssid_asau_time">-</span> s</p>
+            <button id="asso-btn" onclick="assoAuth()">
+              Associate and authenticate
+            </button>
+          </div>
+
+          <br />
+          <div id="ip-status" class="card">
+            <h3>DHCP request progress</h3>
+            <span class="spinner"></span>
+            <p>State : <span id="bssid_ip_state">-</span></p>
+            <p>Duration : <span id="bssid_dhcp_time">-</span> s</p>
+            <p>Address : <span id="bssid_ip_adress">-</span></p>
+            <p>Gateway : <span id="bssid_ip_gw">-</span></p>
+            <button id="dhcp-btn" onclick="requestIP()" disabled>
+              Request an IP address
+            </button>
+          </div>
+          <div id="speedtest_zone" class="card">
+            <h3>Speedtest</h3>
+            <span class="spinner"></span>
+            <div class="form-row">
+              <label for="bw_type">Selection :</label>
+              <select id="bw_type">
+                <option>iperf3</option>
+                <option>speedtest</option>
+              </select>
+
+              <label
+                id="bw_server"
+                for="bw_iperf_target"
+                style="margin-left: 15px"
+                >Iperf3 server IP :</label
+              >
+              <input id="bw_iperf_target" type="text" class="input-target" />
+            </div>
+
+            <p>State : <span id="speedtest_state">-</span></p>
+            <p>Download throughput : <span id="speedtest_dl">-</span> Mbps</p>
+            <p>Upload throughput : <span id="speedtest_ul"> -</span> Mbps</p>
+
+            <button id="spdt-btn" onclick="speedtest()">
+              ▶ Start the throughput test
+            </button>
+          </div>
+          <br />
+          <label for="wifi_monitoring_interval"
+            >Select the refresh interval :</label
+          >
+          <input
+            type="number"
+            id="wifi_monitoring_interval"
+            name="wifi_monitoring_interval"
+            value="2"
+            style="width: 80px"
+          />
+
+          <button id="wm-btn" onclick="WifiMonitoring()" disabled>
+            ▶ Start Wireless Monitoring
+          </button>
+          <button id="reset-wifi-monitoring" onclick="StopWifiMonitoring()">
+            Stop Wireless Monitoring
+          </button>
+        </div>
+
+        <div
+          id="wifi-monitor"
+          class="card wifi-monitor"
+          style="margin-top: 20px; display: none"
+        >
+          <h3>Monitoring Wi-Fi</h3>
+
+          <div class="wifi-graphs">
+            <div class="wifi-graph">
+              <h4>
+                RSSI :
+                <span id="rssiValeur" class="graph-value">--</span>
+              </h4>
+              <div class="chart-container">
+                <canvas id="rssiGraph"></canvas>
+              </div>
+            </div>
+
+            <div class="wifi-graph">
+              <h4>
+                Theoretical maximal throughput :
+                <span id="rateValeur" class="graph-value">--</span>
+              </h4>
+              <div class="chart-container">
+                <canvas id="rateGraph"></canvas>
+              </div>
+            </div>
+
+            <div class="wifi-graph">
+              <h4>
+                Latency :
+                <span id="latencyValeur" class="graph-value">--</span>
+              </h4>
+              <div class="chart-container">
+                <canvas id="latencyGraph"></canvas>
+              </div>
+            </div>
+
+            <div class="wifi-graph">
+              <h4>
+                Estimated Throughput :
+                <span id="Estimated_BW" class="graph-value">--</span>
+              </h4>
+              <div class="chart-container">
+                <canvas id="BWGraph"></canvas>
+              </div>
+            </div>
+
+            <div class="wifi-graph">
+              <h4>
+                Busy Time (%) :
+                <span id="BTValeur" class="graph-value">--</span>
+              </h4>
+              <div class="chart-container">
+                <canvas id="BTGraph"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <table id="ssid-table" class="scan-table" style="display: none">
+        <thead>
+          <tr>
+            <th
+              onclick="trierTableau('ssid')"
+              style="cursor: pointer; user-select: none"
+            >
+              SSID ⇅
+            </th>
+            <th>BSSID</th>
+            <th
+              onclick="trierTableau('signal')"
+              style="cursor: pointer; user-select: none"
+            >
+              Signal (dBm) ⇅
+            </th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="autorun_zone" class="content card" x-data="autorunData()">
+      <h2>Autorun</h2>
+
+      <div class="config-card">
+        <div class="config-header">
+          <h2>Autorun Settings</h2>
+          <div>
+            <button id="save-config-btn" class="save-btn" @click="saveConfig()" style="margin-right: 10px;">
+              Save Config
+            </button>
+            <button class="start-btn" @click="startAutorun()">
+              ▶ Start Autorun
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <div class="settings-column">
+            <h3>Wireless Parameters</h3>
+
+            <div class="form-row">
+              <label for="ssid_autorun">Target SSID</label>
+              <input id="ssid_autorun" type="text" value="eduroam" />
+            </div>
+            <div class="form-row">
+              <label for="interval">Interval (min)</label>
+              <input id="interval" type="number" value="10" />
+            </div>
+            <div class="form-row">
+              <label for="signal_min">Signal Threshold</label>
+              <input id="signal_min" type="number" value="-80" />
+            </div>
+            <div class="form-row">
+              <label for="tx_power">TX Power</label>
+              <input id="tx_power" type="number" value="23" />
+            </div>
+          </div>
+
+          <div class="settings-column">
+            <h3>Network Tests</h3>
+
+            <div class="form-row">
+              <div class="checkbox-wrapper">
+                <input type="checkbox" id="DNS" />
+                <label for="DNS">DNS</label>
+              </div>
+              <input
+                id="dns_target_text"
+                type="text"
+                placeholder="Domain"
+                class="input-target"
+                value="univ-lyon1.fr"
+              />
+            </div>
+
+            <div class="form-row">
+              <div class="checkbox-wrapper">
+                <input type="checkbox" id="HTTP" />
+                <label for="HTTP">HTTP</label>
+              </div>
+              <input
+                id="http_target_text"
+                type="text"
+                placeholder="URL"
+                class="input-target"
+                value="nossl.sh"
+              />
+            </div>
+
+            <div class="form-row">
+              <div class="checkbox-wrapper">
+                <input type="checkbox" id="PING" />
+                <label for="PING">PING</label>
+              </div>
+              <select id="nb_ping" disabled style="width: fit-content">
+                <option>1</option>
+                <option>2</option>
+                <option>4</option>
+              </select>
+              <input
+                id="ping_target_text"
+                type="text"
+                value="8.8.8.8"
+                class="input-target"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr />
+
+      <h2>Autorun test progress</h2>
+
+      <h3><span id="autorun_state">Stopped</span></h3>
+
+      <div class="steps">
+        <div class="step" id="asau_zone">
+          <h3>Association / Authentication</h3>
+          <span class="spinner"></span>
+          <p>State : <span id="autorun_asau_state">-</span></p>
+          <p>BSSID : <span id="autorun_asau_bssid">-</span></p>
+          <p>Duration : <span id="autorun_asau_time">-</span> s</p>
+        </div>
+        <div class="step" id="dhcp_zone">
+          <h3>DHCP</h3>
+          <span class="spinner"></span>
+          <p>State : <span id="autorun_dhcp_state">-</span></p>
+          <p>Duration : <span id="autorun_dhcp_time">-</span> s</p>
+        </div>
+        <div class="step" id="ip_zone">
+          <h3>IP</h3>
+          <p>Address : <span id="autorun_ip_adress">-</span></p>
+          <p>Gateway : <span id="autorun_ip_gw">-</span></p>
+        </div>
+        <div class="step" id="dns_zone">
+          <h3>DNS</h3>
+          <span class="spinner"></span>
+          <p>State : <span id="autorun_dns_state">-</span></p>
+          <p>Duration : <span id="autorun_dns_time">-</span> s</p>
+          <p>Target : <span id="autorun_dns_target"></span></p>
+        </div>
+        <div class="step" id="icmp_zone">
+          <h3>PING</h3>
+          <span class="spinner"></span>
+          <p>State : <span id="autorun_icmp_state">-</span></p>
+          <p>
+            Average latency : <span id="autorun_icmp_avg_latency">-</span> ms
+          </p>
+          <p>
+            Minimum latency : <span id="autorun_icmp_min_latency">-</span> ms
+          </p>
+          <p>
+            Maximum latency : <span id="autorun_icmp_max_latency">-</span> ms
+          </p>
+          <p>Packet received : <span id="autorun_icmp_packet_loss">-</span></p>
+          <p>Target : <span id="autorun_icmp_target"></span></p>
+        </div>
+        <div class="step" id="http_zone">
+          <h3>HTTP</h3>
+          <span class="spinner"></span>
+          <p>State : <span id="autorun_http_state">-</span></p>
+          <p>Duration : <span id="autorun_http_time">-</span> s</p>
+          <p>Target : <span id="autorun_http_target"></span></p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

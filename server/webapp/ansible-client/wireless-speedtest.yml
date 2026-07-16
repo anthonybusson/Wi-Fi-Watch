@@ -1,0 +1,15 @@
+
+- name: Wireless Speedtest 
+  hosts: all
+  gather_facts: no
+  become: yes
+  
+  tasks:
+    - name: Script execution
+      command: /opt/client/appli/wireless_bandwidth_check -i {{ interface }} -m {{ type }} -t {{ target }}
+      register: script_output
+      changed_when: false
+
+    - name: Return script output
+      debug:
+        msg: "{{ script_output.stdout }}"

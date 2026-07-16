@@ -1,0 +1,11 @@
+network={
+  bssid=__BSSID__
+  scan_ssid=1
+  key_mgmt=WPA-EAP
+  identity="__IDENTITY__"
+  password="__PASSWORD__"
+  eap=PEAP
+  phase1="peaplabel=0"
+  phase2="auth=MSCHAPV2"
+  ca_cert="/etc/ssl/certs/ca-certificates.crt"
+}

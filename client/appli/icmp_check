@@ -1,0 +1,68 @@
+#!/bin/bash
+
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+
+V=""
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+
+PING_TARGET="8.8.8.8"
+PING_NUMBER=4
+
+while getopts "i:vht:c:b:" option; do
+    case "${option}" in
+        i)
+            IF="${OPTARG}"
+            ;;
+        b)
+            B="${OPTARG}"
+            ;;
+        t)
+            PING_TARGET="${OPTARG}"
+            ;;
+        c)
+            PING_NUMBER="${OPTARG}"
+            ;;
+        v)
+            V="-v"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./icmp_check [OPTIONS]
+
+Options:
+    -h
+        Display this help message and exit.
+
+    -v
+        Verbose mode. Allows displaying more details.
+
+    -t <IP Address>
+        Allows specifying the IP address to reach.
+
+    -c <Number of packets>
+        Allows specifying the number of packets to send.
+
+    -i <Wireless interface>
+        Allows specifying the wireless interface.
+
+    -b <BSSID>
+        Specify the BSSID.
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+timeout 20s ping -c $PING_NUMBER -4 -I $IF $PING_TARGET > "$DIR/log/icmp_log"
+
+STATUS=$?
+
+AVGL=$(cat "$DIR/log/icmp_log" | grep "rtt" | cut -d'/' -f5)
+MIN=$(cat "$DIR/log/icmp_log" | grep "rtt" | cut -d'/' -f4 | cut -d'=' -f2)
+MAX=$(cat "$DIR/log/icmp_log" | grep "rtt" | cut -d'/' -f6)
+LOSS=$(cat "$DIR/log/icmp_log" | grep "received" | cut -d' ' -f4)"/"$(cat "$DIR/log/icmp_log" | grep "received" | cut -d' ' -f1)
+
+
+echo "{\"service\" : \"ICMP\" , \"status\" : $STATUS , \"bssid\" : \"$B\" , \"AVGL\" : $AVGL , \"MINL\" : $MIN , \"MAXL\" : $MAX, \"RECV\" : \"$LOSS\"}"

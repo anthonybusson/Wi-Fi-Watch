@@ -1,0 +1,28 @@
+#!/bin/bash
+
+IF=$(iw dev | awk '$1=="Interface"{print $2}')
+
+while getopts "i:h" option; do
+    case "${option}" in
+        i)
+            IF="${OPTARG}"
+            ;;
+        h)
+            cat <<- EOF
+Usage: ./reset_config [OPTIONS]
+
+Options:
+    -h
+        Affiche ce message d'aide et quitte.
+
+    -i <Interface sans fil>
+        Permet de spécifier l'interface sans fil.
+EOF
+    exit 0
+    ;;
+    esac
+done
+
+dhclient -r $IF > /dev/null 2>&1
+
+pkill wpa_supplicant

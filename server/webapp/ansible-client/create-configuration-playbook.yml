@@ -1,0 +1,16 @@
+
+- name: Create configuration file for wpa_supplicant
+  hosts: all
+  gather_facts: no
+  become: yes
+  
+
+  tasks:
+    - name: Script execution
+      command: /opt/client/wireless/configuration/script/create_conf -b {{ bssid }} -s {{ ssid }}
+      register: script_output
+      changed_when: false
+
+    - name: Return script output
+      debug:
+        msg: "{{ script_output.stdout }}"
