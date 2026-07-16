@@ -54,4 +54,5 @@ all:
         raspberry:
           ansible_host: X.X.X.X
           ansible_user: "{{ monitoring_user }}"
-``
+```
+
