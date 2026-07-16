@@ -61,7 +61,7 @@ The objective was to design a lightweight, efficient, and easily deployable grap
 ### Technology Stack
 
 * **Backend (Python / Flask):** Provides a REST API, centralizes business logic, and orchestrates scripts.
-* **Automation (Ansible):** Integrated into the backend to manage configurations, guarantee idempotency, and parallelize script execution on remote probes.
+* **Automation (Ansible):** Integrated into the backend to manage configurations, guarantee idempotency, and parallelize script execution on remote monitoring nodes.
 * **Frontend (HTML / Alpine.js / Chart.js):** A lightweight interface dynamically updated. Alpine.js manages reactivity with minimal overhead, while Chart.js provides real-time monitoring graph rendering.
 
 ---
@@ -72,7 +72,7 @@ The web interface communicates with the backend through the following endpoints:
 
 | Method | URL | Parameters / Body | Expected Response (JSON) |
 | :--- | :--- | :--- | :--- |
-| GET | `/hosts` | - | List of probes from the Ansible inventory. |
+| GET | `/hosts` | - | List of monitoring nodes from the Ansible inventory. |
 | GET | `/wifi/status` | `probe`, `interface` | Wireless interface status. |
 | GET | `/scan` | `signal`, `probe`, `interface` | List of BSSID/SSID above the threshold. |
 | GET | `/wifi/monitor/start` | `probe`, `interface`, `interval` | Monitoring stream (Busy Time, Idle Time, MCS, Signal, BSSID). |
@@ -82,7 +82,7 @@ The web interface communicates with the backend through the following endpoints:
 
 ## 6. File Structure and Description
 
-### Client Side (Probes)
+### Client Side (monitoring nodes)
 
 ```text
 client/
