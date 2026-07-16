@@ -1,3 +1,5 @@
+[To see the documentation](DOCUMENTATION.md)
+
 # Installation - Wi-Fi Watch 
 
 This document explains how to install the complete project:
