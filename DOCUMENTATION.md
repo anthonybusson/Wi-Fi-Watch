@@ -1,6 +1,3 @@
-import pypandoc
-
-content = r"""# Wi-Fi Monitoring Tool Documentation
 
 ## 1. Context and Motivation
 
@@ -102,3 +99,25 @@ client/
     │   ├── get_infos              # Continuous radio metrics collection
     │   └── get_status             # Current connection status
 
+### Server Side
+```text
+server/
+└── webapp/
+    ├── app.py                     # Flask server, API, and Ansible/Syslog orchestration
+    ├── Dockerfile                 # Image definition
+    ├── docker-compose.yml         # Service declaration
+    ├── ansible.cfg                # Local Ansible configuration
+    ├── ansible-client/            # SSH keys, inventories, variables (extravars)
+    │   ├── templates/autorun.j2   # Client configuration template
+    │   └── *-playbook.yml         # Orchestration playbooks (scan, start-monitor, etc.)
+    ├── deploy-client-configuration.yml # Global client deployment playbook
+    ├── index.html                 # Main web interface
+    ├── style.css                  # Visual styles
+    ├── script/                    # Frontend JS (alpine.js, chart.js, script.js)
+    ├── install/                   # requirements.txt, DHCP hooks
+    └── uploads/creds.csv          # Storage of uploaded Wi-Fi credentials
+```
+
+---
+
+<img src="architecture.png" alt="alt text" width="900"/>
