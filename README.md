@@ -4,7 +4,7 @@
 
 This document explains how to install the complete project:
 - `/server/webapp/` (web interface + Flask API + Ansible orchestration)
-- `/client/` (measurement scripts deployed on monitoring probes)
+- `/client/` (measurement scripts deployed on monitoring nodes)
 
 ## 1. Prerequisites
 
@@ -12,18 +12,18 @@ This document explains how to install the complete project:
 
 - Linux (Debian/Ubuntu recommended)
 - Docker + Docker Compose plugin
-- Ansible (for the initial deployment of monitoring probes)
-- SSH access to monitoring probes
+- Ansible (for the initial deployment of monitoring nodes)
+- SSH access to monitoring nodes
 - Active local syslog server (rsyslog recommended), with `/dev/log` socket available
 
-### Probes (Client Machines)
+### Monitoring nodes (Client Machines)
 
 - Debian strongly recommended
 - Available Wi-Fi interface
 - SSH access authorized from the server
-- A Linux user on the probe with the ability to become root
-- IP address of the probe
-- Wired connection between the monitoring server and the probe
+- A Linux user on the monitoring nodes with the ability to become root
+- IP address of the monitoring nodes
+- Wired connection between the monitoring server and the monitoring nodes
 
 <img src="topologie.png" alt="alt text" width="400"/>
 
@@ -41,7 +41,7 @@ Modify the following file:
 /server/webapp/ansible-client/inventory/inventory.yml
 ```
 
-Choose the probe name (here, raspberry) and specify the correct IP address.
+Choose the monitoring node name (here, raspberry) and specify the correct IP address.
 
 Minimal example:
 ```yaml
@@ -57,7 +57,7 @@ all:
           ansible_host: X.X.X.X
           ansible_user: "{{ monitoring_user }}"
 ```
-To add multiple probes, add a new block corresponding to the new probe with the correct IP address:
+To add multiple monitoring nodes, add a new block corresponding to the new monitoring node with the correct IP address:
 ```yaml
 all:
   children:
@@ -108,7 +108,7 @@ Modify the permissions of the private key:
 chmod 600 ansible-client/keys/id_rsa_ansible
 ```
 
-To determine whether the probe network card provides the channel occupancy rate, after connecting the probe to an access point, run the following command on the monitoring node: `sudo iw dev <Nom de l'interface> survey dump`
+To determine whether the monitoring node's network card provides the channel occupancy rate, after connecting the monitoring node to an access point, run the following command on the monitoring node: `sudo iw dev <Nom de l'interface> survey dump`
 
   - If the output is similar to the following, then the network card supports the measurement: 
 
@@ -136,9 +136,9 @@ Several cases are possible:
           channel receive time:           52 ms
           channel transmit time:          11 ms
 
-  - Case 3: No output is available. The network card of your probe does not provide the channel occupancy rate. No modification is required in the code and you can proceed to the next steps.
+  - Case 3: No output is available. The network card of your monitoring node does not provide the channel occupancy rate. No modification is required in the code and you can proceed to the next steps.
 
-## 4. Deploy the client on the probes using the existing user with sudo privileges on the monitoring node
+## 4. Deploy the client on the monitoring nodes using the existing user with sudo privileges on the monitoring node
 
 Install the package `sshpass` : `sudo apt install sshpass`
 
@@ -152,7 +152,7 @@ ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ansible-client/inventory/inv
 
 Make sure to modify the command line parameters accordingly.
 
-Repeat the operation for each probe, ensuring that the command parameters are modified each time.
+Repeat the operation for each monitoring node, ensuring that the command parameters are modified each time.
 
 This playbook:
 
@@ -188,7 +188,7 @@ The application is available at:
 ## 6. Usage and verification
 
  http://<server-ip-address>:8000
-Check that the probe appears in the list of probes
+Check that the monitoring node appears in the list of monitoring nodes
 In the Credentials tab, it is possible to deploy a CSV file containing the access credentials for the access points
 In the Visualization tab, launch a BSSID scan and then a test (association/authentication, DHCP, monitoring)
 In the SysLog tab, launch a test sequence on each BSSID of the specified SSID
@@ -197,7 +197,7 @@ To launch continuous tests, go to the SysLog page, choose the desired parameters
 
 
 1. Open the web interface at `http://<ip-du-serveur>:8000`
-2. Check that the probe appears in the list of probes
+2. Check that the monitoring node appears in the list of monitoring nodes
 3. In the Credentials tab, it is possible to deploy a CSV file containing the access credentials for the access points 
 4. In the Visualization tab, launch a BSSID scan and then a test (association/authentication, DHCP, monitoring)
 5. In the SysLog tab, launch a test sequence on each BSSID of the specified SSID
