@@ -35,12 +35,14 @@ cd wirelessmonitoring
 
 Modify the following file:
 
+```bash
 /server/webapp/ansible-client/inventory/inventory.yml
+```
 
 Choose the probe name (here, raspberry) and specify the correct IP address.
 
 Minimal example:
-
+```yaml
 all:
   children:
     probes:
@@ -52,3 +54,4 @@ all:
         raspberry:
           ansible_host: X.X.X.X
           ansible_user: "{{ monitoring_user }}"
+``
