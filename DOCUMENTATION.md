@@ -1,3 +1,5 @@
+Contributor: Abdeldjallil Benziane, Anthony Busson, Thomas Begin 
+
 
 ## 1. Context and Motivation
 
