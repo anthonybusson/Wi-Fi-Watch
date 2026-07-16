@@ -98,6 +98,7 @@ client/
     ├── monitoring/
     │   ├── get_infos              # Continuous radio metrics collection
     │   └── get_status             # Current connection status
+```
 
 ### Server Side
 ```text
